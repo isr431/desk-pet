@@ -129,7 +129,7 @@ describe('desk pet band', () => {
     await panelBand.unmount()
   })
 
-  test('above the prompt draws a compact card', { options: { position: 'above' } }, async ($, on) => {
+  test('above the prompt draws a wide card', { options: { position: 'above' } }, async ($, on) => {
     mock.clock(on, { now: 1_000_000 })
     engine(on)
     await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true })
@@ -137,6 +137,10 @@ describe('desk pet band', () => {
       const ui = await $.ui.mount({ plugin: 'desk-pet', surface, ...BAND })
       expect(await ui.find({ type: surface === 'terminal' ? 'Raster' : 'Svg' })).toBeDefined()
       expect(await ui.find({ text: /hanging out/ })).toBeDefined()
+      if (surface === 'desktop') {
+        expect((await ui.find({ type: 'Svg' }))?.props).toMatchObject({ width: 192, height: 96 })
+        expect(await ui.find({ key: 'settings' })).toBeDefined()
+      }
       await ui.unmount()
     }
   })

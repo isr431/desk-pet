@@ -26,7 +26,7 @@ Your pet lives in a little pixel room (wallpaper, a curtained window, a pendant 
 You choose where it sits:
 
 - **Side panel** (default): its own panel beside the conversation, with the pet's name, what it's doing and a settings button. If you close it, `/desk-pet show` brings it back. A terminal opens the panel by itself only when it's at least 144 columns wide.
-- **Above the prompt**: a compact card at the right edge, just above the message box.
+- **Above the prompt**: a full-width card just above the message box, with the pet on the left, what it's doing beside it and a settings button.
 
 ## Install
 

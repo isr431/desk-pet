@@ -12,7 +12,7 @@
       "name": "desk-pet",
       "source": "./",
       "description": "A small animated pet above the prompt that reacts to what Claude is doing",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "author": {
         "name": "isr431",
         "url": "https://github.com/isr431"

@@ -669,7 +669,7 @@ export const register: Register = (on, opts) => {
     )
   })
 
-  // Above the prompt: a compact card at the right edge.
+  // Above the prompt: a card across the band, the pet at its left.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const isCard = position === 'above' || (position === 'panel' && isPaneWaiting)
     if (!isCard || e.props.hasSurvey) return next(e)
@@ -684,32 +684,30 @@ export const register: Register = (on, opts) => {
       const hasRoom = e.props.bodyColumns >= RASTER_COLUMNS + 24
 
       return (
-        <Box flexDirection="row" justifyContent="flex-end" alignItems="center">
+        <Box flexDirection="row" alignItems="center" gap={2}>
+          <Raster key={RASTER_KEY} columns={RASTER_COLUMNS} rows={RASTER_ROWS} cells={cellsFor(show, index)} />
           {hasRoom && (
-            <Box flexDirection="column" alignItems="flex-end" marginRight={1}>
+            <Box flexDirection="column">
               <Text bold>{petName}</Text>
-              <Text dimColor wrap="truncate-end">
-                {caption}
-              </Text>
+              <Text wrap="truncate-end">{caption}</Text>
             </Box>
           )}
-          <Raster key={RASTER_KEY} columns={RASTER_COLUMNS} rows={RASTER_ROWS} cells={cellsFor(show, index)} />
         </Box>
       )
     }
 
     if (e.surface === 'desktop') {
-      const { Box, Svg, Text } = $.ui.resolve(e)
+      const { Box, Button, Svg, Text } = $.ui.resolve(e)
+      const openSettings = () => void $.ui.open({ id: PANE, title: 'Desk Pet settings', focus: true, closeOnEscape: true })
 
       return (
-        <Box flexDirection="row" justifyContent="flex-end">
-          <Box flexDirection="row" alignItems="center" gap={1} borderStyle="round" paddingX={1}>
-            <Svg source={svgFor(show)} alt={`${petName}: ${caption}`} width={W * 2} height={H * 2} isInteractive />
-            <Box flexDirection="column">
-              <Text bold>{petName}</Text>
-              <Text dimColor>{caption}</Text>
-            </Box>
+        <Box flexDirection="row" alignItems="center" gap={2} width="100%" borderStyle="round" paddingX={1} paddingY={1}>
+          <Svg source={svgFor(show)} alt={`${petName}: ${caption}`} width={W * 4} height={H * 4} isInteractive />
+          <Box flexDirection="column" flexGrow={1} gap={1}>
+            <Text bold>{petName}</Text>
+            <Text>{caption}</Text>
           </Box>
+          <Button key="settings" label="Settings" plain dimColor onPress={openSettings} />
         </Box>
       )
     }
