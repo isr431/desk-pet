@@ -1,0 +1,123 @@
+{
+  "name": "desk-pet",
+  "version": "0.1.0",
+  "description": "A small animated pet above the prompt that reacts to what Claude is doing",
+  "author": {
+    "name": "isr431",
+    "url": "https://github.com/isr431"
+  },
+  "homepage": "https://github.com/isr431/desk-pet",
+  "repository": "https://github.com/isr431/desk-pet",
+  "license": "MIT",
+  "keywords": [
+    "pet",
+    "fun",
+    "animation",
+    "companion"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "pet": {
+      "type": "string",
+      "title": "Desk Pet: pet",
+      "description": "Which pet sits above the prompt",
+      "default": "axolotl",
+      "options": [
+        "axolotl",
+        "quokka",
+        "robot",
+        "dog",
+        "cat"
+      ]
+    },
+    "position": {
+      "type": "string",
+      "title": "Desk Pet: position",
+      "description": "Where the pet lives: its own side panel, a compact card above the prompt, or a tiny pet under the prompt",
+      "default": "panel",
+      "options": [
+        "panel",
+        "above",
+        "footer"
+      ]
+    },
+    "sound": {
+      "type": "boolean",
+      "title": "Desk Pet: sound",
+      "description": "A soft chime when Claude needs input and when a turn finishes",
+      "default": false
+    },
+    "react_turn_start": {
+      "type": "boolean",
+      "title": "Desk Pet: Turn starts",
+      "description": "Wakes up and stretches",
+      "default": true
+    },
+    "react_reading": {
+      "type": "boolean",
+      "title": "Desk Pet: Reading files",
+      "description": "Reads a tiny book, flipping faster for big files",
+      "default": true
+    },
+    "react_editing": {
+      "type": "boolean",
+      "title": "Desk Pet: Editing code",
+      "description": "Hammers or knits",
+      "default": true
+    },
+    "react_shell": {
+      "type": "boolean",
+      "title": "Desk Pet: Running shell commands",
+      "description": "Types furiously at a mini keyboard",
+      "default": true
+    },
+    "react_web_search": {
+      "type": "boolean",
+      "title": "Desk Pet: Web search",
+      "description": "Peers through binoculars",
+      "default": true
+    },
+    "react_tests_pass": {
+      "type": "boolean",
+      "title": "Desk Pet: Tests pass",
+      "description": "Dances in a shower of confetti",
+      "default": true
+    },
+    "react_tests_fail": {
+      "type": "boolean",
+      "title": "Desk Pet: Tests fail",
+      "description": "Hides behind a rock, then peeks out",
+      "default": true
+    },
+    "react_long_run": {
+      "type": "boolean",
+      "title": "Desk Pet: Long run (5+ min)",
+      "description": "Gets bored: yawns, plays with yarn, builds a sandcastle",
+      "default": true
+    },
+    "react_needs_input": {
+      "type": "boolean",
+      "title": "Desk Pet: Claude needs input",
+      "description": "Waves for attention until you respond",
+      "default": true
+    },
+    "react_turn_finish": {
+      "type": "boolean",
+      "title": "Desk Pet: Turn finishes",
+      "description": "Brings you a little trophy or envelope",
+      "default": true
+    },
+    "react_compaction": {
+      "type": "boolean",
+      "title": "Desk Pet: Context compaction",
+      "description": "Tidies its room, putting boxes away",
+      "default": true
+    },
+    "react_idle": {
+      "type": "boolean",
+      "title": "Desk Pet: Idle",
+      "description": "A gentle breathing and blinking loop",
+      "default": true
+    }
+  }
+}
