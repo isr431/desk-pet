@@ -77,7 +77,7 @@ You can change these in three places:
 - "Needs input" covers permission prompts, MCP elicitations, `AskUserQuestion` and plan approval. Permission prompts and MCP elicitations are noticed through Claude Code's notification event, the same one that drives desktop notifications. The pet stops waving when you send a prompt or when the tool call it was waiting on finishes. One known gap: after you approve a long-running command, the pet keeps waving until that command ends, because the hooks API has no event for the moment a prompt is answered.
 - Reactions from subagents count too. Only the main conversation's turns trigger wake-up, boredom and the end-of-turn gift.
 
-## What it can see and do
+## Privacy and data handling
 
 Desk Pet only watches what Claude is doing and draws a pet. It makes no network requests, reads no files, runs no commands, and keeps no data of its own between sessions.
 
