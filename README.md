@@ -21,7 +21,7 @@ Pick an **axolotl**, **quokka**, **tiny robot**, **dog** or **cat**. Each one ha
 | Context compaction | tidies its room, stacking boxes |
 | Nothing happening | breathes and blinks |
 
-Your pet lives in a little pixel room (wallpaper, a night window, a wooden floor and a rug). It's drawn with half-block pixels in the terminal (48 columns by 12 rows) and as an animated SVG in the Claude desktop app.
+Your pet lives in a little pixel room (wallpaper, a curtained window, a pendant lamp, a wooden floor and a rug) that follows your local time of day: a pink sunrise at dawn (5–7), blue skies and drifting clouds in the morning (7–11) and at noon (11–14), golden light in the afternoon (14–17), a sunset in the evening (17–20), and a starry night with the lamp glowing (20–5). Sunlight through the window falls across the floor and shifts with the sun, and the caption's idle icon changes with the hour. It's drawn with half-block pixels in the terminal (48 columns by 12 rows) and as an animated SVG in the Claude desktop app.
 
 You choose where it sits:
 

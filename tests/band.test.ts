@@ -207,6 +207,20 @@ describe('desk pet band', () => {
     })
   }
 
+  test('the room follows the time of day', async ($, on) => {
+    const clock = mock.clock(on, { now: new Date(2026, 9, 2, 19, 59, 30).getTime() })
+    engine(on)
+    await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true })
+    const ui = await $.ui.mount({ plugin: 'desk-pet', surface: 'desktop', ...PANEL })
+    const evening = (await ui.find({ type: 'Svg' }))?.props.source
+    expect((await ui.find({ text: /hanging out/ }))?.text).toContain('🌇')
+
+    await clock.advance(60_000)
+    expect((await ui.find({ text: /hanging out/ }))?.text).toContain('🌙')
+    expect((await ui.find({ type: 'Svg' }))?.props.source).not.toBe(evening)
+    await ui.unmount()
+  })
+
   test('a stored choice from the settings pane applies at session start', async ($, on) => {
     mock.clock(on, { now: 1_000_000 })
     mock.store(on, { settings: { pet: 'cat', position: 'above' } })

@@ -651,28 +651,194 @@ function confetti(c: Canvas, f: number): void {
 
 // --- Room -----------------------------------------------------------------
 
-const ROOM_COLORS = {
-  wallTop: 0x262b45,
-  wall: 0x2c3250,
-  wallLow: 0x323a5c,
-  dot: 0x3a4368,
-  frame: 0xa9825a,
-  frameDark: 0x7d5c3c,
-  sky: 0x18204a,
-  skyLow: 0x22306a,
-  star: 0xe8ecff,
-  moon: 0xfff2b0,
-  baseboard: 0x1d2138,
-  floor: 0x8a5a3a,
-  floorLight: 0x96653f,
-  seam: 0x6c4429,
-  rug: 0xb4546a,
-  rugEdge: 0xd27a8c,
+export type DayPhase = 'dawn' | 'morning' | 'noon' | 'afternoon' | 'evening' | 'night'
+
+export const DAY_PHASES: readonly DayPhase[] = ['dawn', 'morning', 'noon', 'afternoon', 'evening', 'night']
+
+/** The part of the day at a local clock time, in hours since midnight. */
+export function dayPhase(hours: number): DayPhase {
+  if (hours >= 5 && hours < 7) return 'dawn'
+  if (hours >= 7 && hours < 11) return 'morning'
+  if (hours >= 11 && hours < 14) return 'noon'
+  if (hours >= 14 && hours < 17) return 'afternoon'
+  if (hours >= 17 && hours < 20) return 'evening'
+
+  return 'night'
 }
 
-/** The pet's little room: wallpaper, a night window, a wooden floor and a rug. */
-function buildRoom(): Frame {
-  const c = new Canvas()
+/** The room's own colors in full daylight; each phase's light tints them. */
+const ROOM_COLORS = {
+  wallTop: 0x6f88ad,
+  wall: 0x7891b5,
+  wallLow: 0x809abd,
+  dot: 0x93accd,
+  frame: 0xd2a878,
+  frameDark: 0x9c7650,
+  curtain: 0xeee3cf,
+  curtainFold: 0xc9b89c,
+  rod: 0x6b4a2e,
+  cord: 0x2e3340,
+  shade: 0x55607a,
+  shadeRim: 0x7a86a0,
+  baseboard: 0x4d5875,
+  floor: 0xb98257,
+  floorLight: 0xc68e60,
+  seam: 0x8f5e3a,
+  rug: 0xd0607a,
+  rugEdge: 0xe8889b,
+}
+
+type Rgb = readonly [number, number, number]
+
+type Sky = {
+  /** Four bands of sky, top to horizon, two rows each. */
+  bands: readonly [number, number, number, number]
+  hills: readonly [far: number, near: number]
+  /** The light falling on the whole room, as a multiplier per channel. */
+  ambient: Rgb
+  /** How brightly the pendant lamp is lit, 0 for off. */
+  lamp: number
+  sun?: { x: number; y: number; r: number; core: number; glow: number }
+  moon?: { x: number; y: number }
+  stars?: { at: readonly (readonly [number, number])[]; rgb: number }
+  clouds?: readonly { x: number; y: number; w: number; rgb: number; shade: number }[]
+  /** Lit windows of a house on the far hill. */
+  houseLights?: number
+  /** Sunlight through the window onto the floor: its slant, how deep it reaches and its color. */
+  beam?: { skew: number; rows: number; light: Rgb }
+}
+
+const SKIES: Readonly<Record<DayPhase, Sky>> = {
+  dawn: {
+    bands: [0x3c3f7a, 0x8a6fae, 0xe89aa0, 0xffc28a],
+    hills: [0x6a5a88, 0x47406c],
+    ambient: [0.74, 0.64, 0.74],
+    lamp: 0.3,
+    sun: { x: 36, y: 8, r: 2, core: 0xffe2a4, glow: 0xffad72 },
+    stars: { at: [[35, 3], [43, 4], [41, 3]], rgb: 0xc9c6f0 },
+    clouds: [{ x: 40, y: 5, w: 4, rgb: 0xf8b9b0, shade: 0xd48c9c }],
+    houseLights: 0xffd58a,
+    beam: { skew: 2, rows: 5, light: [0.24, 0.14, 0.12] },
+  },
+  morning: {
+    bands: [0x5aa8ec, 0x7dbcf2, 0xa4d2f6, 0xcfe8f7],
+    hills: [0x86bf8e, 0x5f9f6b],
+    ambient: [0.98, 0.96, 0.9],
+    lamp: 0,
+    sun: { x: 35, y: 4, r: 1, core: 0xfff6c2, glow: 0xffe37e },
+    clouds: [
+      { x: 40, y: 4, w: 5, rgb: 0xffffff, shade: 0xdbe9f5 },
+      { x: 34, y: 7, w: 4, rgb: 0xf4f9ff, shade: 0xd2e3f2 },
+    ],
+    beam: { skew: 1, rows: 4, light: [0.26, 0.24, 0.16] },
+  },
+  noon: {
+    bands: [0x3b8fe0, 0x52a3ea, 0x6fb6f0, 0x93caf4],
+    hills: [0x72b77a, 0x4e995b],
+    ambient: [1.04, 1.04, 1.02],
+    lamp: 0,
+    sun: { x: 42, y: 4, r: 1, core: 0xffffe6, glow: 0xfff191 },
+    clouds: [{ x: 34, y: 4, w: 4, rgb: 0xffffff, shade: 0xd8e8f6 }],
+    beam: { skew: 0, rows: 2, light: [0.3, 0.3, 0.24] },
+  },
+  afternoon: {
+    bands: [0x4f97d8, 0x78b0e0, 0xb2cbd8, 0xf0d6a2],
+    hills: [0x93ad62, 0x6f8f4a],
+    ambient: [1.0, 0.92, 0.8],
+    lamp: 0,
+    sun: { x: 43, y: 7, r: 1, core: 0xfff2b4, glow: 0xffcb5c },
+    clouds: [{ x: 35, y: 4, w: 4, rgb: 0xfff5e2, shade: 0xe6cfae }],
+    beam: { skew: -1, rows: 4, light: [0.36, 0.25, 0.1] },
+  },
+  evening: {
+    bands: [0x4b3a78, 0xa04f7c, 0xec7a58, 0xffb25a],
+    hills: [0x5c3559, 0x3b2242],
+    ambient: [0.74, 0.54, 0.54],
+    lamp: 0.6,
+    sun: { x: 37, y: 8, r: 2, core: 0xffd870, glow: 0xff8a3c },
+    clouds: [{ x: 40, y: 4, w: 5, rgb: 0xf59aa0, shade: 0xc0688a }],
+    houseLights: 0xffcf7a,
+    beam: { skew: 2, rows: 5, light: [0.38, 0.16, 0.06] },
+  },
+  night: {
+    bands: [0x131a40, 0x18204a, 0x1d2757, 0x243168],
+    hills: [0x1c2448, 0x111733],
+    ambient: [0.34, 0.33, 0.44],
+    lamp: 0.85,
+    moon: { x: 42, y: 4 },
+    stars: { at: [[34, 3], [37, 4], [35, 7], [43, 7], [44, 4], [37, 8], [42, 5]], rgb: 0xe8ecff },
+    houseLights: 0xffd27a,
+  },
+}
+
+// The window: its frame, the glass inside it and the bars across it.
+const WIN = { x: 33, y: 2, w: 13, h: 10 } as const
+const GLASS = { x: WIN.x + 1, y: WIN.y + 1, w: WIN.w - 2, h: WIN.h - 2 } as const
+const BAR_X = GLASS.x + 5
+const BAR_Y = GLASS.y + 3
+const FAR_HILL = [2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1]
+const NEAR_HILL = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+const LAMP = { x: 27, y: 4 } as const
+const LAMP_GLOW: Rgb = [1, 0.78, 0.5]
+
+const channels = (rgb: number): Rgb => [(rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff]
+const pack = (r: number, g: number, b: number) => {
+  const byte = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
+
+  return (byte(r) << 16) | (byte(g) << 8) | byte(b)
+}
+
+/** `a` moved `t` of the way to `b`. */
+function mix(a: number, b: number, t: number): number {
+  const [ar, ag, ab] = channels(a)
+  const [br, bg, bb] = channels(b)
+
+  return pack(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t)
+}
+
+const isGlass = (x: number, y: number) =>
+  x >= GLASS.x && x < GLASS.x + GLASS.w && y >= GLASS.y && y < GLASS.y + GLASS.h && x !== BAR_X && y !== BAR_Y
+
+/** The view through the window: sky, sun or moon, clouds and two rows of hills. */
+function drawView(c: Canvas, sky: Sky): void {
+  const bottom = GLASS.y + GLASS.h - 1
+  for (let y = GLASS.y; y <= bottom; y++) c.rect(GLASS.x, y, GLASS.w, 1, sky.bands[Math.min(3, (y - GLASS.y) >> 1)]!)
+  const tint = (x: number, y: number, rgb: number, t: number) => c.set(x, y, mix(c.get(x, y) & 0xffffff, rgb, t))
+
+  for (const [x, y] of sky.stars?.at ?? []) c.set(x, y, sky.stars!.rgb)
+  if (sky.sun) {
+    const { x: sx, y: sy, r, core, glow } = sky.sun
+    for (let y = sy - r - 1; y <= sy + r + 1; y++) {
+      for (let x = sx - r - 1; x <= sx + r + 1; x++) {
+        const d = Math.hypot(x - sx, y - sy)
+        if (d <= r + 0.2) c.set(x, y, d < 0.5 || d <= r - 0.8 ? mix(core, 0xffffff, 0.4) : core)
+        else if (d <= r + 1.2) tint(x, y, glow, 0.4)
+      }
+    }
+  }
+  if (sky.moon) {
+    const { x, y } = sky.moon
+    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) tint(x + dx, y + dy, 0xfff2b0, 0.35)
+    for (const [dx, dy] of [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]] as const) c.set(x + dx, y + dy, 0xfff2b0)
+    c.set(x + 1, y, 0xe2d49a)
+  }
+  for (const cloud of sky.clouds ?? []) {
+    c.rect(cloud.x + 1, cloud.y, cloud.w - 2, 1, cloud.rgb)
+    c.rect(cloud.x, cloud.y + 1, cloud.w, 1, cloud.rgb)
+    c.rect(cloud.x + 1, cloud.y + 2, cloud.w - 1, 1, cloud.shade)
+  }
+  FAR_HILL.forEach((h, i) => c.rect(GLASS.x + i, bottom - h + 1, 1, h, sky.hills[0]))
+  NEAR_HILL.forEach((h, i) => c.rect(GLASS.x + i, bottom - h + 1, 1, h, sky.hills[1]))
+  if (sky.houseLights) {
+    const x = GLASS.x + 9
+    const top = bottom - FAR_HILL[9]! - 1
+    c.rect(x, top, 2, 2, mix(sky.hills[0], 0x000000, 0.3))
+    c.set(x, top + 1, sky.houseLights)
+  }
+}
+
+/** Wallpaper, a curtained window, a pendant lamp, a wooden floor and a rug, unlit. */
+function drawRoom(c: Canvas): void {
   const R = ROOM_COLORS
   for (let y = 0; y < 18; y++) {
     for (let x = 0; x < W; x++) {
@@ -680,19 +846,26 @@ function buildRoom(): Frame {
       c.set(x, y, x % 6 === 3 && y % 6 === 3 ? R.dot : tone)
     }
   }
-  // The window, a crescent moon and a few stars.
-  c.rect(36, 2, 10, 9, R.frame)
-  c.rect(37, 3, 8, 7, R.sky)
-  c.rect(37, 7, 8, 3, R.skyLow)
-  c.rect(40, 3, 1, 7, R.frame)
-  c.rect(37, 6, 8, 1, R.frame)
-  c.rect(35, 11, 12, 1, R.frameDark)
-  c.set(43, 4, R.moon)
-  c.set(43, 5, R.moon)
-  c.set(42, 4, R.moon)
-  c.set(38, 4, R.star)
-  c.set(39, 8, R.star)
-  c.set(42, 8, R.star)
+  c.rect(WIN.x, WIN.y, WIN.w, WIN.h, R.frame)
+  for (let y = GLASS.y; y < GLASS.y + GLASS.h; y++) {
+    for (let x = GLASS.x; x < GLASS.x + GLASS.w; x++) if (isGlass(x, y)) c.px[y * W + x] = 0
+  }
+  c.rect(WIN.x - 1, WIN.y + WIN.h, WIN.w + 2, 1, R.frameDark)
+  // Curtains on a rod, gathered a little at the sill.
+  c.rect(WIN.x - 3, 1, WIN.w + 6, 1, R.rod)
+  for (const x0 of [WIN.x - 2, WIN.x + WIN.w]) {
+    const isLeft = x0 < WIN.x
+    for (let y = 2; y < WIN.y + WIN.h + 2; y++) {
+      c.set(x0, y, isLeft ? R.curtainFold : R.curtain)
+      c.set(x0 + 1, y, isLeft ? R.curtain : R.curtainFold)
+    }
+    c.set(isLeft ? x0 - 1 : x0 + 2, WIN.y + WIN.h + 1, R.curtainFold)
+    c.set(isLeft ? x0 + 1 : x0, 2, R.curtainFold)
+  }
+  // The pendant lamp.
+  c.rect(LAMP.x, 0, 1, 2, R.cord)
+  c.rect(LAMP.x - 1, 2, 3, 1, R.shade)
+  c.rect(LAMP.x - 2, 3, 5, 1, R.shadeRim)
   c.rect(0, 18, W, 1, R.baseboard)
   for (let y = 19; y < H; y++) {
     for (let x = 0; x < W; x++) {
@@ -703,12 +876,79 @@ function buildRoom(): Frame {
   c.rect(6, 21, 13, 1, R.rugEdge)
   c.rect(4, 22, 17, 1, R.rug)
   c.rect(5, 23, 15, 1, R.rug)
+}
+
+/**
+ * How much light reaches each pixel: the phase's ambient light, the lamp's
+ * warm pool and the sunbeam the window throws on the floor.
+ */
+function lightField(sky: Sky): Float32Array {
+  const light = new Float32Array(W * H * 3)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 3
+      light.set(sky.ambient, i)
+      if (sky.lamp > 0) {
+        const fall = Math.max(0, 1 - Math.hypot((x - LAMP.x) / 22, (y - LAMP.y) / 20)) ** 1.4
+        // The floor under the lamp catches a pool of its own.
+        const pool = y >= 19 ? Math.max(0, 1 - Math.hypot((x - LAMP.x) / 15, (y - 21) / 4)) : 0
+        for (let k = 0; k < 3; k++) light[i + k]! += LAMP_GLOW[k]! * sky.lamp * (fall * 0.9 + pool * 0.5)
+      }
+    }
+  }
+  if (sky.beam) {
+    const { skew, rows, light: tint } = sky.beam
+    for (let row = 0; row < rows; row++) {
+      const y = 19 + row
+      const shift = Math.round(skew * (row + 0.5))
+      for (let x = GLASS.x + shift; x < GLASS.x + GLASS.w + shift; x++) {
+        if (x < 0 || x >= W || x === BAR_X + shift) continue
+        // The beam fades toward its far edge.
+        const fade = 1 - row / (rows + 1)
+        for (let k = 0; k < 3; k++) light[(y * W + x) * 3 + k]! += tint[k]! * fade
+      }
+    }
+  }
+
+  return light
+}
+
+/** The pet's room at one part of the day. */
+function buildRoom(phase: DayPhase): Frame {
+  const sky = SKIES[phase]
+  const c = new Canvas()
+  drawRoom(c)
+  const light = lightField(sky)
+  c.px.forEach((v, i) => {
+    if (!v) return
+    const [r, g, b] = channels(v)
+    c.px[i] = OPAQUE | pack(r * light[i * 3]!, g * light[i * 3 + 1]!, b * light[i * 3 + 2]!)
+  })
+  if (sky.lamp > 0) {
+    c.rect(LAMP.x - 1, 4, 3, 1, mix(0xffe7a8, 0xffffff, sky.lamp * 0.4))
+    c.set(LAMP.x, 5, mix(0xffcf70, 0xfff0c0, sky.lamp))
+  }
+  const view = new Canvas()
+  drawView(view, sky)
+  for (let y = GLASS.y; y < GLASS.y + GLASS.h; y++) {
+    for (let x = GLASS.x; x < GLASS.x + GLASS.w; x++) if (isGlass(x, y)) c.px[y * W + x] = view.get(x, y)
+  }
 
   return c.px
 }
 
-/** The room every frame is drawn over. */
-export const ROOM: Frame = buildRoom()
+const rooms = new Map<DayPhase, Frame>()
+
+/** The room every frame is drawn over, lit for the part of the day. */
+export function roomFor(phase: DayPhase): Frame {
+  let room = rooms.get(phase)
+  if (!room) {
+    room = buildRoom(phase)
+    rooms.set(phase, room)
+  }
+
+  return room
+}
 
 // --- Animations -----------------------------------------------------------
 

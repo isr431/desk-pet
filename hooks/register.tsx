@@ -12,10 +12,12 @@ import {
   RASTER_COLUMNS,
   RASTER_ROWS,
   rasterCells,
-  ROOM,
+  roomFor,
+  dayPhase,
   H,
   W,
   type Anim,
+  type DayPhase,
   type Kind,
   type PetId,
 } from './art'
@@ -48,6 +50,14 @@ const REACTIONS = [
 
 const BORED_LABELS = ['yawning', 'playing with yarn', 'building a sandcastle']
 const BORED_ICONS = ['🥱', '🧶', '🏖️']
+const PHASE_ICONS: Record<DayPhase, string> = {
+  dawn: '🌅',
+  morning: '🌤️',
+  noon: '☀️',
+  afternoon: '⛅',
+  evening: '🌇',
+  night: '🌙',
+}
 
 type Position = 'panel' | 'above' | 'footer'
 const POSITIONS: readonly { id: Position; title: string }[] = [
@@ -83,7 +93,7 @@ const iconFor = (show: PetShow): string => {
       return '📦'
   }
 
-  return '🌙'
+  return PHASE_ICONS[phase]
 }
 
 const captionFor = (show: PetShow) => `${iconFor(show)} ${show.label || 'hanging out'}`
@@ -154,7 +164,16 @@ const anims = new Map<string, Anim>()
 const cells = new Map<string, string[]>()
 const svgs = new Map<string, string>()
 
-const animKey = (show: PetShow) => `${pet}:${show.kind}:${show.variant}:${show.frameMs}`
+/** The part of the day the room is lit for, from the local clock. */
+let phase: DayPhase = 'night'
+
+const phaseAt = (now: number): DayPhase => {
+  const local = new Date(now)
+
+  return dayPhase(local.getHours() + local.getMinutes() / 60)
+}
+
+const animKey = (show: PetShow) => `${phase}:${pet}:${show.kind}:${show.variant}:${show.frameMs}`
 
 const animFor = (show: PetShow): Anim => {
   const key = animKey(show)
@@ -174,7 +193,7 @@ const cellsFor = (show: PetShow, index: number): string => {
     list = []
     cells.set(key, list)
   }
-  list[index] ??= rasterCells(animFor(show).frames[index]!, ROOM)
+  list[index] ??= rasterCells(animFor(show).frames[index]!, roomFor(phase))
 
   return list[index]!
 }
@@ -183,7 +202,7 @@ const svgFor = (show: PetShow): string => {
   const key = animKey(show)
   let svg = svgs.get(key)
   if (!svg) {
-    svg = animSvg(animFor(show), 4, ROOM)
+    svg = animSvg(animFor(show), 4, roomFor(phase))
     svgs.set(key, svg)
   }
 
@@ -239,9 +258,22 @@ const desired = (now: number): PetShow => {
   return isOn('idle') ? IDLE : { ...IDLE, kind: 'still' }
 }
 
+/** Moves the room to the part of the day at `now`; true when that changed it. */
+function relight(now: number): boolean {
+  const next = phaseAt(now)
+  if (next === phase) return false
+  phase = next
+  anims.clear()
+  cells.clear()
+  svgs.clear()
+
+  return true
+}
+
 /** One beat of the band: switch reactions, or repaint the terminal frame. */
 async function step($: EngineInterface): Promise<number> {
   const now = await $.clock.now()
+  if (relight(now)) $.ui.invalidate('ui.render')
   current ??= await read($, shown)
   const want = desired(now)
   if (!sameShow(want, current)) {
@@ -442,6 +474,7 @@ export const register: Register = (on, opts) => {
 
   on('session.start', async ($, e, next) => {
     await loadOverrides($)
+    relight(await $.clock.now())
     loop($)
     if (position === 'panel') void openPetPane($)
     else void $.ui.close({ id: PET_PANE }).catch(() => undefined)
