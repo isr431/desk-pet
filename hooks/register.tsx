@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, PluginOptions, Register, Timer } from 'claude-code'
+import type { ConfigSetResult, EngineInterface, PluginOptions, Register, Timer } from 'claude-code'
 
 import type { PetShow } from '../types'
 import {
@@ -116,9 +116,6 @@ const field = (e: object, name: string): string => {
 
   return typeof value === 'string' ? value : ''
 }
-
-/** Pages flip faster the bigger the file. */
-const readPace = (bytes: number) => (bytes > 200_000 ? 70 : bytes > 50_000 ? 110 : bytes > 10_000 ? 160 : 240)
 
 const sameShow = (a: PetShow, b: PetShow) =>
   a.kind === b.kind && a.variant === b.variant && a.startedAt === b.startedAt && a.frameMs === b.frameMs && a.label === b.label
@@ -338,20 +335,12 @@ const preview = (kind: Kind, now: number) => {
   play(kind, now, { label: `preview: ${label}`, variant, holdMs: 3600 })
 }
 
-async function classify($: EngineInterface, e: { tool: string }): Promise<ToolReaction | null> {
+/** Which reaction a tool call gets, from its name and input alone. */
+function classify(e: { tool: string }): ToolReaction | null {
   switch (e.tool) {
     case 'Read':
-    case 'NotebookRead': {
-      const path = field(e, 'file_path') || field(e, 'notebook_path')
-      let size = 0
-      try {
-        size = (await $.fs.stat(path)).size
-      } catch {
-        // An unreadable path reads at the gentle pace.
-      }
-
-      return { kind: 'read', label: `reading ${basename(path)}`, frameMs: readPace(size) }
-    }
+    case 'NotebookRead':
+      return { kind: 'read', label: `reading ${basename(field(e, 'file_path') || field(e, 'notebook_path'))}` }
     case 'Grep':
     case 'Glob':
       return { kind: 'read', label: `looking for ${clip(field(e, 'pattern'), 28)}` }
@@ -455,7 +444,7 @@ export const register: Register = (on, given) => {
       }
     }
 
-    const wants = await classify($, e)
+    const wants = classify(e)
     if (!wants) return next(e)
     const mine = isOn(wants.kind) ? play(wants.kind, now, { label: wants.label, frameMs: wants.frameMs, active: 1 }) : null
     let ran: Awaited<ReturnType<typeof next>>
@@ -487,22 +476,11 @@ export const register: Register = (on, given) => {
     }
   })
 
+  // Permission prompts and MCP questions are noticed from the notification
+  // alone, never from the hooks that could answer them.
   on('classic.Notification', async ($, e, next) => {
-    if (e.notification_type === 'permission_prompt' || e.notification_type === 'elicitation_dialog') {
-      ask($, 'needs your OK', await $.clock.now())
-    }
-
-    return next(e)
-  })
-
-  on('classic.PermissionRequest', async ($, e, next) => {
-    ask($, 'needs your OK', await $.clock.now())
-
-    return next(e)
-  })
-
-  on('classic.Elicitation', async ($, e, next) => {
-    ask($, 'has a question for you', await $.clock.now())
+    if (e.notification_type === 'permission_prompt') ask($, 'needs your OK', await $.clock.now())
+    if (e.notification_type === 'elicitation_dialog') ask($, 'has a question for you', await $.clock.now())
 
     return next(e)
   })
@@ -666,9 +644,27 @@ export const register: Register = (on, given) => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)
-    const set = async (key: string, value: string | boolean) => {
-      const { deny } = await $.config.set({ key: `desk-pet.${key}`, value })
+    // Each key is spelled out so a reader (and the directory's scanner) can
+    // see the pane only ever writes Desk Pet's own settings.
+    const done = ({ deny }: ConfigSetResult) => {
       if (deny) $.ui.toast(`Desk Pet: ${deny}`)
+    }
+    const setPet = (value: PetId) => void $.config.set({ key: 'desk-pet.pet', value }).then(done)
+    const setPosition = (value: Position) => void $.config.set({ key: 'desk-pet.position', value }).then(done)
+    const setSound = (value: boolean) => void $.config.set({ key: 'desk-pet.sound', value }).then(done)
+    const setReaction: Record<(typeof REACTIONS)[number]['field'], (value: boolean) => void> = {
+      react_turn_start: value => void $.config.set({ key: 'desk-pet.react_turn_start', value }).then(done),
+      react_reading: value => void $.config.set({ key: 'desk-pet.react_reading', value }).then(done),
+      react_editing: value => void $.config.set({ key: 'desk-pet.react_editing', value }).then(done),
+      react_shell: value => void $.config.set({ key: 'desk-pet.react_shell', value }).then(done),
+      react_web_search: value => void $.config.set({ key: 'desk-pet.react_web_search', value }).then(done),
+      react_tests_pass: value => void $.config.set({ key: 'desk-pet.react_tests_pass', value }).then(done),
+      react_tests_fail: value => void $.config.set({ key: 'desk-pet.react_tests_fail', value }).then(done),
+      react_long_run: value => void $.config.set({ key: 'desk-pet.react_long_run', value }).then(done),
+      react_needs_input: value => void $.config.set({ key: 'desk-pet.react_needs_input', value }).then(done),
+      react_turn_finish: value => void $.config.set({ key: 'desk-pet.react_turn_finish', value }).then(done),
+      react_compaction: value => void $.config.set({ key: 'desk-pet.react_compaction', value }).then(done),
+      react_idle: value => void $.config.set({ key: 'desk-pet.react_idle', value }).then(done),
     }
 
     return (
@@ -680,7 +676,7 @@ export const register: Register = (on, given) => {
               key={`pet-${id}`}
               label={PETS[id].name}
               variant={id === pet ? 'primary' : 'secondary'}
-              onPress={() => void set('pet', id)}
+              onPress={() => setPet(id)}
             />
           ))}
         </Box>
@@ -691,13 +687,13 @@ export const register: Register = (on, given) => {
               key={`position-${one.id}`}
               label={one.title}
               variant={one.id === position ? 'primary' : 'secondary'}
-              onPress={() => void set('position', one.id)}
+              onPress={() => setPosition(one.id)}
             />
           ))}
         </Box>
         <Box flexDirection="row" gap={1} marginTop={1}>
           <Text bold>Sound</Text>
-          <Button key="sound" label={isSoundOn ? 'On' : 'Off'} onPress={() => void set('sound', !isSoundOn)} />
+          <Button key="sound" label={isSoundOn ? 'On' : 'Off'} onPress={() => setSound(!isSoundOn)} />
           <Text dimColor>a soft chime for needs input and turn finishes</Text>
         </Box>
         <Box marginTop={1}>
@@ -710,7 +706,7 @@ export const register: Register = (on, given) => {
               label={`${isOn(one.kind) ? '●' : '○'} ${one.title}`}
               plain
               dimColor={!isOn(one.kind)}
-              onPress={() => void set(one.field, !isOn(one.kind))}
+              onPress={() => setReaction[one.field](!isOn(one.kind))}
             />
             {one.kind !== 'idle' && (
               <Button

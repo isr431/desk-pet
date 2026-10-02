@@ -20,26 +20,14 @@
     "pet": {
       "type": "string",
       "title": "Desk Pet: pet",
-      "description": "Which pet sits above the prompt",
-      "default": "axolotl",
-      "options": [
-        "axolotl",
-        "quokka",
-        "robot",
-        "dog",
-        "cat"
-      ]
+      "description": "Which pet sits above the prompt: axolotl, quokka, robot, dog or cat",
+      "default": "axolotl"
     },
     "position": {
       "type": "string",
       "title": "Desk Pet: position",
-      "description": "Where the pet lives: its own side panel, a compact card above the prompt, or a tiny pet under the prompt",
-      "default": "panel",
-      "options": [
-        "panel",
-        "above",
-        "footer"
-      ]
+      "description": "Where the pet lives: panel (its own side panel), above (a compact card above the prompt) or footer (a tiny pet under the prompt)",
+      "default": "panel"
     },
     "sound": {
       "type": "boolean",
@@ -56,7 +44,7 @@
     "react_reading": {
       "type": "boolean",
       "title": "Desk Pet: Reading files",
-      "description": "Reads a tiny book, flipping faster for big files",
+      "description": "Reads a tiny book",
       "default": true
     },
     "react_editing": {

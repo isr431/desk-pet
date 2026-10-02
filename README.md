@@ -9,7 +9,7 @@ Pick an **axolotl**, **quokka**, **tiny robot**, **dog** or **cat**. Each one ha
 | When | Your pet |
 |---|---|
 | A turn starts | wakes up and stretches |
-| Claude reads files | reads a tiny book, flipping pages faster for big files |
+| Claude reads files | reads a tiny book |
 | Claude edits code | hammers (quokka, robot, dog) or knits (axolotl, cat) |
 | Claude runs a shell command | types furiously at a mini keyboard |
 | Claude searches or fetches the web | peers through binoculars |
@@ -67,15 +67,39 @@ You can change these in three places:
 - `/desk-pet` opens a settings pane with a preview button for each reaction.
 - `/desk-pet cat` (or `axolotl`, `quokka`, `robot`, `dog`) switches pets.
 - `/desk-pet show` reopens the side panel.
-- `/config` in the terminal lists every setting as a "Desk Pet: …" row.
+- `/config` in the terminal lists every setting as a "Desk Pet: …" row. Pet and position are typed there as text (`axolotl`, `quokka`, `robot`, `dog`, `cat`; `panel`, `above`, `footer`); anything else falls back to the default.
 
 `/desk-pet demo` plays every reaction in turn, which is handy for a screenshot or a GIF.
 
 ## How it decides what to show
 
 - Tests are detected from the shell command (`npm test`, `pytest`, `go test`, `cargo test`, `vitest`, `jest`, `rspec` and similar). A non-zero exit counts as a failure.
-- "Needs input" covers permission prompts, MCP elicitations, `AskUserQuestion` and plan approval. The pet stops waving when you send a prompt or when the tool call it was waiting on finishes. One known gap: after you approve a long-running command, the pet keeps waving until that command ends, because the hooks API has no event for the moment a prompt is answered.
+- "Needs input" covers permission prompts, MCP elicitations, `AskUserQuestion` and plan approval. Permission prompts and MCP elicitations are noticed through Claude Code's notification event, the same one that drives desktop notifications. The pet stops waving when you send a prompt or when the tool call it was waiting on finishes. One known gap: after you approve a long-running command, the pet keeps waving until that command ends, because the hooks API has no event for the moment a prompt is answered.
 - Reactions from subagents count too. Only the main conversation's turns trigger wake-up, boredom and the end-of-turn gift.
+
+## What it can see and do
+
+Desk Pet only watches what Claude is doing and draws a pet. It makes no network requests, reads no files, runs no commands, and keeps no data of its own between sessions.
+
+**Hooks.** Every hook looks, then passes the event on unchanged. None of them approves, blocks or rewrites anything.
+
+| Hook | What it reads | Why |
+|---|---|---|
+| `session.start` | nothing | starts the animation, opens the side panel and registers `/desk-pet` |
+| `prompt.submit` | nothing, not even your prompt's text | stops the "needs input" wave as soon as you reply |
+| `turn.start`, `turn.complete` | whether the turn ended with an answer, and whether it was a subagent's | wake-up, boredom after 5 minutes, the end-of-turn gift |
+| `tool.call` | the tool's name, plus a file's name (never its contents), a search pattern or query, a URL's host, the first ~38 characters of a shell command, and whether the call failed | picks the reaction and its caption, and spots test runs and whether they passed |
+| `session.compact` | whether it was a subagent's, or a background precompute | the tidying-up reaction |
+| `classic.Notification` | the notification's type only (`permission_prompt` or `elicitation_dialog`) | starts the "needs input" wave |
+| `classic.PermissionDenied` | nothing | stops the wave when a prompt is refused |
+| `command.run` | what you typed after `/desk-pet` | the command |
+| `ui.render` | the surface and the space available | draws the pet |
+
+Captions appear on your screen only. The current caption is held in memory for the session (`$.state`) so the panel can redraw it. It is never written to disk or sent anywhere.
+
+**Settings it writes.** Desk Pet changes a setting only when you ask: a button in the `/desk-pet` settings pane, or `/desk-pet cat` (or another pet). Each write is to one of Desk Pet's own settings (`desk-pet.pet`, `desk-pet.position`, `desk-pet.sound` or a `desk-pet.react_…` switch), which Claude Code saves in your settings file under `pluginConfigs`, exactly as `/config` would. It never touches any other setting, permission or environment variable.
+
+**Sound.** Off by default. When on, it plays a short chime that it synthesizes in code.
 
 In the "above the prompt" position, press ctrl+x ctrl+a to collapse the card in the terminal.
 
