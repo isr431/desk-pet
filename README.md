@@ -79,6 +79,8 @@ You can change these in three places:
 
 ## Privacy and data handling
 
+[Privacy policy](https://github.com/isr431/desk-pet#privacy-and-data-handling): the disclosure below describes the mod’s data handling.
+
 Desk Pet only watches what Claude is doing and draws a pet. It makes no network requests, reads no files, runs no commands, and keeps no data of its own between sessions.
 
 **Hooks.** Every hook looks, then passes the event on unchanged. None of them approves, blocks or rewrites anything.
