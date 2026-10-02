@@ -120,8 +120,11 @@ const field = (e: object, name: string): string => {
 const sameShow = (a: PetShow, b: PetShow) =>
   a.kind === b.kind && a.variant === b.variant && a.startedAt === b.startedAt && a.frameMs === b.frameMs && a.label === b.label
 
-// The settings in force, set by register() from the plugin's options.
+// The settings in force: the plugin's options from register(), with the
+// pane's own choices from $.store laid over them.
+let given: PluginOptions = {}
 let options: PluginOptions = {}
+let overrides: Record<string, string | boolean> = {}
 let pet: PetId = 'axolotl'
 let petName = PETS.axolotl.name
 let isSoundOn = false
@@ -377,14 +380,68 @@ function classify(e: { tool: string }): ToolReaction | null {
   return null
 }
 
-export const register: Register = (on, given) => {
-  options = given
-  pet = PET_IDS.includes(given.pet as PetId) ? (given.pet as PetId) : 'axolotl'
+const SETTINGS = 'settings'
+
+/** Lays the stored choices over the plugin's options and reads the result. */
+function apply(): void {
+  options = { ...given, ...overrides }
+  pet = PET_IDS.includes(options.pet as PetId) ? (options.pet as PetId) : 'axolotl'
   petName = PETS[pet].name
-  isSoundOn = given.sound === true
-  position = POSITIONS.some(one => one.id === given.position) ? (given.position as Position) : 'panel'
+  isSoundOn = options.sound === true
+  position = POSITIONS.some(one => one.id === options.position) ? (options.position as Position) : 'panel'
+}
+
+async function loadOverrides($: EngineInterface): Promise<void> {
+  try {
+    const saved = await $.store.get(SETTINGS)
+    overrides = saved !== null && typeof saved === 'object' ? (saved as Record<string, string | boolean>) : {}
+  } catch {
+    overrides = {}
+  }
+  apply()
+}
+
+/**
+ * Saves one setting from the pane. A plugin installed from a marketplace may
+ * have no /config row to write (`$.config.set` then rejects), so the choice is
+ * kept in $.store and applied at once; where the row exists it's written too.
+ */
+async function save($: EngineInterface, field: string, value: string | boolean, write: () => Promise<ConfigSetResult>): Promise<string | undefined> {
+  const had = overrides
+  const wasPosition = position
+  overrides = { ...overrides, [field]: value }
+  await $.store.set(SETTINGS, overrides)
+  apply()
+  let deny: string | undefined
+  try {
+    deny = (await write()).deny
+  } catch {
+    // No /config row for it: the stored choice stands on its own.
+  }
+  if (deny) {
+    overrides = had
+    await $.store.set(SETTINGS, overrides)
+    apply()
+  }
+  if (position !== wasPosition) {
+    if (position === 'panel') void openPetPane($)
+    else {
+      isPaneWaiting = false
+      void $.ui.close({ id: PET_PANE }).catch(() => undefined)
+    }
+  }
+  $.ui.invalidate('ui.render')
+  nudge()
+
+  return deny
+}
+
+export const register: Register = (on, opts) => {
+  given = opts
+  apply()
 
   on('session.start', async ($, e, next) => {
+    await loadOverrides($)
     loop($)
     if (position === 'panel') void openPetPane($)
     else void $.ui.close({ id: PET_PANE }).catch(() => undefined)
@@ -399,6 +456,19 @@ export const register: Register = (on, given) => {
     }
 
     return next(e)
+  })
+
+  // A change made in the /config menu wins over the pane's stored choice.
+  on('config.set', async ($, e, next) => {
+    const field = e.key.startsWith('desk-pet.') ? e.key.slice('desk-pet.'.length) : null
+    const result = await next(e)
+    if (field && e.origin.kind !== 'plugin' && !result.deny && field in overrides) {
+      const { [field]: _dropped, ...rest } = overrides
+      overrides = rest
+      await $.store.set(SETTINGS, overrides)
+    }
+
+    return result
   })
 
   on('prompt.submit', ($, e, next) => {
@@ -508,7 +578,9 @@ export const register: Register = (on, given) => {
     }
     const wanted = PET_IDS.find(id => id === arg || PETS[id].name.toLowerCase() === arg || (arg === 'tiny robot' && id === 'robot'))
     if (wanted) {
-      const { deny } = await $.config.set({ key: 'desk-pet.pet', value: wanted })
+      const deny = await save($, 'pet', wanted, () => $.config.set({ key: 'desk-pet.pet', value: wanted })).catch((error: unknown) =>
+        error instanceof Error ? error.message : String(error),
+      )
 
       return { text: deny ? `Desk Pet: couldn't switch pets (${deny}).` : `Desk Pet: say hello to your ${PETS[wanted].name.toLowerCase()}.` }
     }
@@ -646,25 +718,27 @@ export const register: Register = (on, given) => {
     const { Box, Button, Text } = $.ui.resolve(e)
     // Each key is spelled out so a reader (and the directory's scanner) can
     // see the pane only ever writes Desk Pet's own settings.
-    const done = ({ deny }: ConfigSetResult) => {
-      if (deny) $.ui.toast(`Desk Pet: ${deny}`)
-    }
-    const setPet = (value: PetId) => void $.config.set({ key: 'desk-pet.pet', value: value }).then(done)
-    const setPosition = (value: Position) => void $.config.set({ key: 'desk-pet.position', value: value }).then(done)
-    const setSound = (value: boolean) => void $.config.set({ key: 'desk-pet.sound', value: value }).then(done)
+    const keep = (field: string, value: string | boolean, write: () => Promise<ConfigSetResult>) =>
+      void save($, field, value, write).then(
+        deny => deny && $.ui.toast(`Desk Pet: ${deny}`),
+        (error: unknown) => $.ui.toast(`Desk Pet: couldn't save that setting (${error instanceof Error ? error.message : String(error)})`),
+      )
+    const setPet = (value: PetId) => keep('pet', value, () => $.config.set({ key: 'desk-pet.pet', value: value }))
+    const setPosition = (value: Position) => keep('position', value, () => $.config.set({ key: 'desk-pet.position', value: value }))
+    const setSound = (value: boolean) => keep('sound', value, () => $.config.set({ key: 'desk-pet.sound', value: value }))
     const setReaction: Record<(typeof REACTIONS)[number]['field'], (value: boolean) => void> = {
-      react_turn_start: value => void $.config.set({ key: 'desk-pet.react_turn_start', value: value }).then(done),
-      react_reading: value => void $.config.set({ key: 'desk-pet.react_reading', value: value }).then(done),
-      react_editing: value => void $.config.set({ key: 'desk-pet.react_editing', value: value }).then(done),
-      react_shell: value => void $.config.set({ key: 'desk-pet.react_shell', value: value }).then(done),
-      react_web_search: value => void $.config.set({ key: 'desk-pet.react_web_search', value: value }).then(done),
-      react_tests_pass: value => void $.config.set({ key: 'desk-pet.react_tests_pass', value: value }).then(done),
-      react_tests_fail: value => void $.config.set({ key: 'desk-pet.react_tests_fail', value: value }).then(done),
-      react_long_run: value => void $.config.set({ key: 'desk-pet.react_long_run', value: value }).then(done),
-      react_needs_input: value => void $.config.set({ key: 'desk-pet.react_needs_input', value: value }).then(done),
-      react_turn_finish: value => void $.config.set({ key: 'desk-pet.react_turn_finish', value: value }).then(done),
-      react_compaction: value => void $.config.set({ key: 'desk-pet.react_compaction', value: value }).then(done),
-      react_idle: value => void $.config.set({ key: 'desk-pet.react_idle', value: value }).then(done),
+      react_turn_start: value => keep('react_turn_start', value, () => $.config.set({ key: 'desk-pet.react_turn_start', value: value })),
+      react_reading: value => keep('react_reading', value, () => $.config.set({ key: 'desk-pet.react_reading', value: value })),
+      react_editing: value => keep('react_editing', value, () => $.config.set({ key: 'desk-pet.react_editing', value: value })),
+      react_shell: value => keep('react_shell', value, () => $.config.set({ key: 'desk-pet.react_shell', value: value })),
+      react_web_search: value => keep('react_web_search', value, () => $.config.set({ key: 'desk-pet.react_web_search', value: value })),
+      react_tests_pass: value => keep('react_tests_pass', value, () => $.config.set({ key: 'desk-pet.react_tests_pass', value: value })),
+      react_tests_fail: value => keep('react_tests_fail', value, () => $.config.set({ key: 'desk-pet.react_tests_fail', value: value })),
+      react_long_run: value => keep('react_long_run', value, () => $.config.set({ key: 'desk-pet.react_long_run', value: value })),
+      react_needs_input: value => keep('react_needs_input', value, () => $.config.set({ key: 'desk-pet.react_needs_input', value: value })),
+      react_turn_finish: value => keep('react_turn_finish', value, () => $.config.set({ key: 'desk-pet.react_turn_finish', value: value })),
+      react_compaction: value => keep('react_compaction', value, () => $.config.set({ key: 'desk-pet.react_compaction', value: value })),
+      react_idle: value => keep('react_idle', value, () => $.config.set({ key: 'desk-pet.react_idle', value: value })),
     }
 
     return (

@@ -185,4 +185,35 @@ describe('desk pet band', () => {
     }
     await ui.unmount()
   })
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`settings take effect with no /config row to write (${surface})`, async ($, on) => {
+      mock.clock(on, { now: 1_000_000 })
+      mock.store(on)
+      engine(on)
+      on('config.set', (_$, e) => {
+        throw new Error(`no /config row with key ${e.key}`)
+      })
+      await $.session.start({ cwd: '/tmp', surface, isInteractive: true })
+      const settings = await $.ui.mount({ plugin: 'desk-pet', surface, component: 'Pane', requestId: 'desk-pet-settings', props: { bodyColumns: 80 } as never })
+      await settings.press({ key: 'pet-dog' })
+      await settings.press({ key: 'react_idle' })
+      expect((await settings.find({ key: 'pet-dog' }))?.props).toMatchObject({ variant: 'primary' })
+      expect((await settings.find({ key: 'react_idle' }))?.text).toContain('○')
+      const panel = await $.ui.mount({ plugin: 'desk-pet', surface, ...PANEL })
+      expect(await panel.find({ text: /Dog/ })).toBeDefined()
+      await panel.unmount()
+      await settings.unmount()
+    })
+  }
+
+  test('a stored choice from the settings pane applies at session start', async ($, on) => {
+    mock.clock(on, { now: 1_000_000 })
+    mock.store(on, { settings: { pet: 'cat', position: 'above' } })
+    engine(on)
+    await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true })
+    const band = await $.ui.mount({ plugin: 'desk-pet', surface: 'desktop', ...BAND })
+    expect(await band.find({ text: /Cat/ })).toBeDefined()
+    await band.unmount()
+  })
 })
