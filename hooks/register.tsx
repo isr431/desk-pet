@@ -59,11 +59,10 @@ const PHASE_ICONS: Record<DayPhase, string> = {
   night: '🌙',
 }
 
-type Position = 'panel' | 'above' | 'footer'
+type Position = 'panel' | 'above'
 const POSITIONS: readonly { id: Position; title: string }[] = [
   { id: 'panel', title: 'Side panel' },
   { id: 'above', title: 'Above the prompt' },
-  { id: 'footer', title: 'Under the prompt' },
 ]
 
 /** The little icon beside the caption for what the pet is doing. */
@@ -710,35 +709,6 @@ export const register: Register = (on, opts) => {
               <Text bold>{petName}</Text>
               <Text dimColor>{caption}</Text>
             </Box>
-          </Box>
-        </Box>
-      )
-    }
-
-    return next(e)
-  })
-
-  // Under the prompt: a tiny pet beside the hint line on the desktop, a
-  // caption at the end of it in the terminal.
-  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
-    if (position !== 'footer') return next(e)
-    const show = await read($, shown)
-    const caption = captionFor(show)
-
-    if (e.surface === 'terminal') {
-      return next({ ...e, props: { ...e.props, tail: `  ${petName} ${caption}` } })
-    }
-
-    if (e.surface === 'desktop') {
-      const { Box, Svg, Text } = $.ui.resolve(e)
-      const hint = await next(e)
-
-      return (
-        <Box flexDirection="row" justifyContent="space-between" alignItems="center" gap={1}>
-          {hint}
-          <Box flexDirection="row" alignItems="center" gap={1}>
-            <Text dimColor>{caption}</Text>
-            <Svg source={svgFor(show)} alt={`${petName}: ${caption}`} width={W * 1.5} height={H * 1.5} isInteractive />
           </Box>
         </Box>
       )

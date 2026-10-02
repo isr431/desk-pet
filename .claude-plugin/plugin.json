@@ -1,6 +1,6 @@
 {
   "name": "desk-pet",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A small animated pet above the prompt that reacts to what Claude is doing",
   "author": {
     "name": "isr431",
@@ -26,7 +26,7 @@
     "position": {
       "type": "string",
       "title": "Desk Pet: position",
-      "description": "Where the pet lives: panel (its own side panel), above (a compact card above the prompt) or footer (a tiny pet under the prompt)",
+      "description": "Where the pet lives: panel (its own side panel) or above (a compact card above the prompt)",
       "default": "panel"
     },
     "sound": {

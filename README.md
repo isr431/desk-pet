@@ -27,7 +27,6 @@ You choose where it sits:
 
 - **Side panel** (default): its own panel beside the conversation, with the pet's name, what it's doing and a settings button. If you close it, `/desk-pet show` brings it back. A terminal opens the panel by itself only when it's at least 144 columns wide.
 - **Above the prompt**: a compact card at the right edge, just above the message box.
-- **Under the prompt**: a tiny pet beside the hint line under the message box in the desktop app, or a one-line caption at the end of that line in the terminal.
 
 ## Install
 
@@ -58,7 +57,7 @@ claude --plugin-dir /path/to/desk-pet
 ## Settings
 
 - **Pet**: axolotl (default), quokka, robot, dog or cat.
-- **Position**: side panel (default), above the prompt, or under the prompt.
+- **Position**: side panel (default) or above the prompt.
 - **Sound**: off by default. When on, a soft chime plays when Claude needs input and when a turn finishes. Both chimes are synthesized in code; no audio files are shipped.
 - **Reactions**: each one can be switched on or off. All are on by default.
 
@@ -67,7 +66,7 @@ You can change these in three places:
 - `/desk-pet` opens a settings pane with a preview button for each reaction.
 - `/desk-pet cat` (or `axolotl`, `quokka`, `robot`, `dog`) switches pets.
 - `/desk-pet show` reopens the side panel.
-- `/config` in the terminal lists every setting as a "Desk Pet: …" row. Pet and position are typed there as text (`axolotl`, `quokka`, `robot`, `dog`, `cat`; `panel`, `above`, `footer`); anything else falls back to the default.
+- `/config` in the terminal lists every setting as a "Desk Pet: …" row. Pet and position are typed there as text (`axolotl`, `quokka`, `robot`, `dog`, `cat`; `panel`, `above`); anything else falls back to the default.
 
 `/desk-pet demo` plays every reaction in turn, which is handy for a screenshot or a GIF.
 

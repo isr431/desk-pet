@@ -26,19 +26,13 @@ const PANEL = {
   },
 } as const
 
-const HINT = {
-  component: 'PromptHint',
-  props: { isDraft: false, isWorking: false, hint: '? for shortcuts' },
-} as const
-
 const engine = (on: On) => {
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('command.register', (_$, e) => ({ command: e.name }))
   on('ui.open', () => ({ value: { isPlaced: true } }) as never)
   on('ui.close', () => ({ value: {} }) as never)
-  // The engine's own drawing of the band and the hint line, beneath the pet.
+  // The engine's own drawing of the band, beneath the pet.
   on('ui.render', { component: 'AbovePrompt' }, ($, e) => $.ui.resolve(e).Text({ children: 'engine band' }))
-  on('ui.render', { component: 'PromptHint' }, ($, e) => $.ui.resolve(e).Text({ children: e.props.hint }))
 }
 
 describe('desk pet band', () => {
@@ -147,17 +141,6 @@ describe('desk pet band', () => {
     }
   })
 
-  test('under the prompt keeps the hint and adds the pet', { options: { position: 'footer' } }, async ($, on) => {
-    mock.clock(on, { now: 1_000_000 })
-    engine(on)
-    await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true })
-    const ui = await $.ui.mount({ plugin: 'desk-pet', surface: 'desktop', ...HINT })
-    expect(await ui.find({ type: 'Svg' })).toBeDefined()
-    expect(await ui.find({ text: /hanging out/ })).toBeDefined()
-    expect(await ui.find({ text: /for shortcuts/ })).toBeDefined()
-    await ui.unmount()
-  })
-
   test('when the panel cannot be placed the pet sits above the prompt', async ($, on) => {
     mock.clock(on, { now: 1_000_000 })
     on('session.start', (_$, e) => ({ cwd: e.cwd }))
@@ -180,7 +163,7 @@ describe('desk pet band', () => {
       requestId: 'desk-pet-settings',
       props: { bodyColumns: 80 } as never,
     })
-    for (const key of ['pet-axolotl', 'pet-quokka', 'pet-robot', 'pet-dog', 'pet-cat', 'position-panel', 'position-footer', 'sound', 'react_idle', 'preview-wave']) {
+    for (const key of ['pet-axolotl', 'pet-quokka', 'pet-robot', 'pet-dog', 'pet-cat', 'position-panel', 'position-above', 'sound', 'react_idle', 'preview-wave']) {
       expect(await ui.find({ key })).toBeDefined()
     }
     await ui.unmount()
