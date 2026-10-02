@@ -1,6 +1,6 @@
 {
   "name": "desk-pet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A small animated pet above the prompt that reacts to what Claude is doing",
   "author": {
     "name": "isr431",
