@@ -649,22 +649,22 @@ export const register: Register = (on, given) => {
     const done = ({ deny }: ConfigSetResult) => {
       if (deny) $.ui.toast(`Desk Pet: ${deny}`)
     }
-    const setPet = (value: PetId) => void $.config.set({ key: 'desk-pet.pet', value }).then(done)
-    const setPosition = (value: Position) => void $.config.set({ key: 'desk-pet.position', value }).then(done)
-    const setSound = (value: boolean) => void $.config.set({ key: 'desk-pet.sound', value }).then(done)
+    const setPet = (value: PetId) => void $.config.set({ key: 'desk-pet.pet', value: value }).then(done)
+    const setPosition = (value: Position) => void $.config.set({ key: 'desk-pet.position', value: value }).then(done)
+    const setSound = (value: boolean) => void $.config.set({ key: 'desk-pet.sound', value: value }).then(done)
     const setReaction: Record<(typeof REACTIONS)[number]['field'], (value: boolean) => void> = {
-      react_turn_start: value => void $.config.set({ key: 'desk-pet.react_turn_start', value }).then(done),
-      react_reading: value => void $.config.set({ key: 'desk-pet.react_reading', value }).then(done),
-      react_editing: value => void $.config.set({ key: 'desk-pet.react_editing', value }).then(done),
-      react_shell: value => void $.config.set({ key: 'desk-pet.react_shell', value }).then(done),
-      react_web_search: value => void $.config.set({ key: 'desk-pet.react_web_search', value }).then(done),
-      react_tests_pass: value => void $.config.set({ key: 'desk-pet.react_tests_pass', value }).then(done),
-      react_tests_fail: value => void $.config.set({ key: 'desk-pet.react_tests_fail', value }).then(done),
-      react_long_run: value => void $.config.set({ key: 'desk-pet.react_long_run', value }).then(done),
-      react_needs_input: value => void $.config.set({ key: 'desk-pet.react_needs_input', value }).then(done),
-      react_turn_finish: value => void $.config.set({ key: 'desk-pet.react_turn_finish', value }).then(done),
-      react_compaction: value => void $.config.set({ key: 'desk-pet.react_compaction', value }).then(done),
-      react_idle: value => void $.config.set({ key: 'desk-pet.react_idle', value }).then(done),
+      react_turn_start: value => void $.config.set({ key: 'desk-pet.react_turn_start', value: value }).then(done),
+      react_reading: value => void $.config.set({ key: 'desk-pet.react_reading', value: value }).then(done),
+      react_editing: value => void $.config.set({ key: 'desk-pet.react_editing', value: value }).then(done),
+      react_shell: value => void $.config.set({ key: 'desk-pet.react_shell', value: value }).then(done),
+      react_web_search: value => void $.config.set({ key: 'desk-pet.react_web_search', value: value }).then(done),
+      react_tests_pass: value => void $.config.set({ key: 'desk-pet.react_tests_pass', value: value }).then(done),
+      react_tests_fail: value => void $.config.set({ key: 'desk-pet.react_tests_fail', value: value }).then(done),
+      react_long_run: value => void $.config.set({ key: 'desk-pet.react_long_run', value: value }).then(done),
+      react_needs_input: value => void $.config.set({ key: 'desk-pet.react_needs_input', value: value }).then(done),
+      react_turn_finish: value => void $.config.set({ key: 'desk-pet.react_turn_finish', value: value }).then(done),
+      react_compaction: value => void $.config.set({ key: 'desk-pet.react_compaction', value: value }).then(done),
+      react_idle: value => void $.config.set({ key: 'desk-pet.react_idle', value: value }).then(done),
     }
 
     return (
